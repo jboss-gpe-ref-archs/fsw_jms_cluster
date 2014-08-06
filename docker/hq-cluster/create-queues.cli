@@ -1,0 +1,5 @@
+batch
+/subsystem=messaging/hornetq-server=default/jms-queue=test:add(durable=true,entries=["java:jboss/exported/jms/queue/test","java:/jms/queue/test"])
+/subsystem=messaging/hornetq-server=default/jms-queue=MessageServiceQueue:add(durable=true,entries=[java:/jms/queue/MessageServiceQueue,java:jboss/exported/jms/queue/MessageService])
+/subsystem=messaging/hornetq-server=default/jms-queue=AuditLogServiceQueue:add(durable=true,entries=[java:/jms/queue/AuditLogService,java:jboss/exported/jms/queue/AuditLogService])
+run-batch

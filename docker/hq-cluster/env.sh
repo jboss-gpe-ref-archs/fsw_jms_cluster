@@ -1,0 +1,10 @@
+IP_ADDR=127.0.0.1
+SERVER_INSTALL_DIR=/opt/jboss
+SERVER_NAME=hornetq
+RESOURCES_DIR=/resources
+EAP=$RESOURCES_DIR/jboss-eap-6.1.1.zip
+JBOSS_CONFIG=standalone-full.xml
+CLI_HORNETQ=/configure-hornetq.cli
+CLI_HORNETQ_QUEUES=/create-queues.cli
+HQ_SHARED_JOURNAL_DIR=/opt/jboss/hq-journal
+JAVA_HOME=
