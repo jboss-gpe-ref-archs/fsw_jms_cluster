@@ -1,0 +1,5 @@
+batch
+/subsystem=datasources/xa-data-source=RefArchDS:add(enabled=true,driver-name=mysql,user-name=jboss,password=jboss,jndi-name="java:jboss/datasources/RefArchDS")
+/subsystem=datasources/xa-data-source=RefArchDS/xa-datasource-properties=URL:add(value="jdbc:mysql://${mysql.host.ip}:${mysql.host.port}/refarch")
+/subsystem=messaging/hornetq-server=default/jms-queue=AuditLogServiceQueue:add(durable=true,entries=[java:/jms/queue/AuditLogService,java:jboss/exported/jms/queue/AuditLogService])
+run-batch

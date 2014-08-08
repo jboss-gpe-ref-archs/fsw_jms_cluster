@@ -1,0 +1,16 @@
+IP_ADDR=127.0.0.1
+SERVER_NAME=fsw
+SERVER_INSTALL_DIR=/opt/jboss
+TEMP_DIR=/temp-install
+RESOURCES_DIR=/resources
+MANIFESTS_DIR=/manifests
+FSW=$RESOURCES_DIR/jboss-fsw-installer-6.0.0.GA-redhat-4.jar
+FSW_INSTALL_MANIFEST=$MANIFESTS_DIR/fsw.xml
+FSW_INSTALL_VARIABLES=$MANIFESTS_DIR/fsw.variables
+JBOSS_CONFIG=standalone-full.xml
+MYSQL_DRIVER=/usr/share/java/mysql-connector-java.jar
+MYSQL_SCHEMA=fsw
+CLI_FSW=configure-fsw.cli
+CLI_FSW_REFARCH_APP=configure-fsw-refarch-app.cli
+REF_ARCH_APP=$RESOURCES_DIR/fsw-jms-cluster-service.ear
+JAVA_HOME=
