@@ -36,6 +36,7 @@ batch
 /subsystem=messaging/hornetq-server=default/discovery-group=dg-group1:add(socket-binding=messaging-group,refresh-timeout=10000)
 /subsystem=messaging/hornetq-server=default/cluster-connection=mycluster:add(connector-ref=netty,discovery-group-name=dg-group1,cluster-connection-address=jms)
 /subsystem=messaging/hornetq-server=default/cluster-connection=mycluster:write-attribute(name=forward-when-no-consumers,value=false)
+/subsystem=messaging/hornetq-server=default/cluster-connection=mycluster:write-attribute(name=use-duplicate-detection,value=true)
 /subsystem=messaging/hornetq-server=backup:add
 /subsystem=messaging/hornetq-server=backup:write-attribute(name=backup,value=true)
 /subsystem=messaging/hornetq-server=backup:write-attribute(name=clustered,value=true)
@@ -65,4 +66,5 @@ batch
 /subsystem=messaging/hornetq-server=backup/discovery-group=dg-group1:add(socket-binding=messaging-group,refresh-timeout=10000)
 /subsystem=messaging/hornetq-server=backup/cluster-connection=mycluster:add(connector-ref=netty,discovery-group-name=dg-group1,cluster-connection-address=jms)
 /subsystem=messaging/hornetq-server=backup/cluster-connection=mycluster:write-attribute(name=forward-when-no-consumers,value=false)
+/subsystem=messaging/hornetq-server=backup/cluster-connection=mycluster:write-attribute(name=use-duplicate-detection,value=true)
 run-batch
