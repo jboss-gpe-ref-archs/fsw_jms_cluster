@@ -1,0 +1,13 @@
+:data-uri:
+:ref_arch_doc: link:doc/ref_arch.adoc[reference architecture documentation]
+
+image::doc/images/rhheader.png[width=900]
+
+:numbered!:
+
+== PURPOSE:
+The purpose of this reference architecture is to demonstrate the configuration and behavior of a Fuse Service Works cluster configured with an external JMS broker cluster.
+
+== OVERVIEW:
+
+Please refer to the {ref_arch_doc}
