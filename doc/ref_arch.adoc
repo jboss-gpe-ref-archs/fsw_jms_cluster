@@ -82,7 +82,7 @@ To demonstrate message load-balancing, transparent JMS client fail-over and tran
 
 image::images/MessageService.png[]
 
-The MessageService composite listens to the MessageService queue over the JCA binding, and expects a text message. When a message is consumed from the queue, the service implementation persists the contents of the message with the node identifier and a time-stamp to the MySQL database. The message is then forwarded to the AuditLoggerService reference. This reference is bound to the AuditLogService queue, so the net result is that a new message with the same content is posted on that queue. The message consumption, persistence and the posting of the message happen in one transaction.
+The MessageService composite listens to the MessageService queue over the JCA binding, and expects a text message. When a message is consumed from the queue, the service implementation persists the contents of the message with the node identifier and a time-stamp to the MySQL database. The message is then forwarded to the AuditLoggerService reference. This reference is bound to the AuditLogService queue, so the net result is that a new message with the same content is posted on that queue. The message consumption, persistence and the posting of the message happens in one transaction.
 
 image::images/AuditLogService.png[]
 
@@ -102,7 +102,7 @@ The following is a list of pre-requisites:
 . git client
 . {docker}
 . JBoss EAP 6.1.1.GA. JBoss EAP can be downloaded from the RedHat customer support portal. We will use version 6.1.1.GA for the HornetQ servers to be aligned with the EAP version on which Fuse Service Works runs. Download URL https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=24143&product=appplatform. The archive name is `jboss-eap-6.1.1.zip`.
-. Fuse Service Works. The Fuse Service Works installer can be downloaded from the Red Hat customer support portal. The download URL is https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=27523&product=jboss.fuse.serviceworks. The artefact name is `jboss-fsw-installer-6.0.0.GA-redhat-4.jar`.
+. Fuse Service Works. The Fuse Service Works installer can be downloaded from the Red Hat customer support portal. The download URL is https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=27523&product=jboss.fuse.serviceworks. The artifact name is `jboss-fsw-installer-6.0.0.GA-redhat-4.jar`.
 
 If the reference architecture is tested on a platform that does not provide {docker} support, we recommend to run it on a virtual machine with a suitable OS (e.g. Fedora 20 or RHEL7). In this case all instructions will have to be executed on the virtual machine.
 
@@ -413,7 +413,7 @@ MariaDB [(none)]> SELECT node,COUNT(*) FROM refarch.auditlog GROUP BY node;
 
 MariaDB [(none)]> 
 ----
-=== Next steps
+=== Broker Fail-over test
 
 Now we can start experimenting with this setup, and see what happens if we shut down or kill a HornetQ node or a FSW node. To observe the behavior, you probably want to use the client application with a higher numer of messages than the default of 100 (by setting the `--count` parameter) so it runs long enough to allow manipulations on the servers. 
 
@@ -448,4 +448,20 @@ In case of a crash of a HornetQ node, the backup broker for the failed live brok
 In case of normal shutdown of one of the brokers, fail-over does not happen. Messages that were still undelivered by the shut down broker are persisted in the journal. The HornetQ will have to be restarted to trigger delivery of those messages. This behaviour is set in the configuration of brokers, by setting the `failover-on-shutdown` parameter to `false` (see lines 15 and 47 in $REF_ARCH_HOME/docker/hq-cluster/configure-hornetq.cli). If this parameter is set to `true`, fail-over will also kick in when the broker is shut down normally.
 
 When a failed broker is started up again, the live broker will take over from its backup. This behaviour is configured by setting the `allow-failback` parameter to `true`. If this parameter is set to false, the live broker will not take over again from its backup, but will act as the backup for the new live broker.  
+
+== To-Do
+
+. section 2.2 deployment diagram
+. shared file system
+.. what's the shared file system technology used in this ref arch ?
+.. what's our recommended clustered filesystem technology for a production environment ?  (GFS2 + SAN)
+. MySQL XA data source
++
+Mention that a MySQL XA data source is needed for _RefArchDS_ datasource pool due to the multiple JCA resources involved in the trnx.
+Could also mention that mysql jdbc driver for this ref arch has issues during some circumstances of an XA transaction:  http://bugs.mysql.com/bug.php?id=72890
+. mention what the equivalent of $JBOSS_HOME is for FSW images .... i found it, but others may not
+. recommend UDP multicast diagnostic tool
+.. I have one if you don't
+. mention TCP and UDP ports that would need to be opened in a prod environment when firewalls are active
+. Seems like the all the extraneous FSW web archives could be removed from the deployment.  Only SY configs and SY app are needed, correct ?
 
