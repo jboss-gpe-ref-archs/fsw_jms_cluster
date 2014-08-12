@@ -60,6 +60,7 @@ Strictly speaking, HornetQ is not a standalone JMS broker, as it runs on top of 
 
 In this reference architecture, the HornetQ brokers are configured as _symmetrical live backup_ cluster. This means that we have a cluster of two nodes, where each node has a live broker, and the backup broker for the other node. All nodes are interconnected through cluster connections. +
 This setup provides for:
+
 * Load-balancing: the cluster connections between the brokers ensure that messages can be load balanced between the nodes of the cluster. By default, the messages will be distributed in a round-robin fashion between the nodes of the cluster (as long as these nodes have consumers for these messages).
 * Fail-over: in case of failure of one of the nodes, the backup broker on the other node will take over from the failed live broker. Once the failed live broker is restored, it will resume activity from the backup broker. Fail-over is transparent for clients (producers and consumers): the client library code detects the failure of the live node and reconnects the client to the backup node transparently.
 
