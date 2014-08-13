@@ -100,6 +100,7 @@ The following is a list of pre-requisites:
 . Java JDK 1.7
 . maven 3.0.5 (or greater)
 . git client
+. mysql client
 . {docker}
 . JBoss EAP 6.1.1.GA. JBoss EAP can be downloaded from the RedHat customer support portal. We will use version 6.1.1.GA for the HornetQ servers to be aligned with the EAP version on which Fuse Service Works runs. Download URL https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=24143&product=appplatform. The archive name is `jboss-eap-6.1.1.zip`.
 . Fuse Service Works. The Fuse Service Works installer can be downloaded from the Red Hat customer support portal. The download URL is https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=27523&product=jboss.fuse.serviceworks. The artifact name is `jboss-fsw-installer-6.0.0.GA-redhat-4.jar`.
@@ -417,7 +418,7 @@ MariaDB [(none)]>
 
 Now we can start experimenting with this setup, and see what happens if we shut down or kill a HornetQ node or a FSW node. To observe the behavior, you probably want to use the client application with a higher numer of messages than the default of 100 (by setting the `--count` parameter) so it runs long enough to allow manipulations on the servers. 
 
-To simulate a crash of a server, you can kill the JVM process in the docker container. Enter the container with `nsenter` as explained above. Then, on the command prompt, find the PID of the java process, and send it a kill signal:
+To simulate a crash of a server, you can kill the JVM process in the _refarch-hq1_ docker container. Enter the _refarch-hq1_ container with `nsenter` as explained above. Then, on the command prompt, find the PID of the java process, and send it a kill signal:
 
 ----
 [root@0887cb24ede1 /]# ps aux | grep java
@@ -445,7 +446,7 @@ To do a controlled shut down, from the container prompt:
 
 In case of a crash of a HornetQ node, the backup broker for the failed live broker takes over. Messages keep being delivered to the queues.The FSW client connections to the failed broker are tranparently redirected to the backup broker. No messages are lost. 
 
-In case of normal shutdown of one of the brokers, fail-over does not happen. Messages that were still undelivered by the shut down broker are persisted in the journal. The HornetQ will have to be restarted to trigger delivery of those messages. This behaviour is set in the configuration of brokers, by setting the `failover-on-shutdown` parameter to `false` (see lines 15 and 47 in $REF_ARCH_HOME/docker/hq-cluster/configure-hornetq.cli). If this parameter is set to `true`, fail-over will also kick in when the broker is shut down normally.
+In case of normal shutdown of one of the brokers, fail-over does not happen. Messages that were still undelivered by the shut down broker are persisted in the journal. This HornetQ broker that previously underwent a normal shutdown will have to be restarted to trigger delivery of those messages. This behaviour is set in the configuration of brokers, by setting the `failover-on-shutdown` parameter to `false` (see lines 15 and 47 in $REF_ARCH_HOME/docker/hq-cluster/configure-hornetq.cli). If this parameter is set to `true`, fail-over will also kick in when the broker is shut down normally.
 
 When a failed broker is started up again, the live broker will take over from its backup. This behaviour is configured by setting the `allow-failback` parameter to `true`. If this parameter is set to false, the live broker will not take over again from its backup, but will act as the backup for the new live broker.  
 
@@ -459,7 +460,8 @@ When a failed broker is started up again, the live broker will take over from it
 +
 Mention that a MySQL XA data source is needed for _RefArchDS_ datasource pool due to the multiple JCA resources involved in the trnx.
 Could also mention that mysql jdbc driver for this ref arch has issues during some circumstances of an XA transaction:  http://bugs.mysql.com/bug.php?id=72890
-. mention what the equivalent of $JBOSS_HOME is for FSW images .... i found it, but others may not
+. mention what the equivalent of $JBOSS_HOME is for FSW images .... i found it, but others may not.
+Or just suggest to:  su - jboss once logged in via nsenter
 . recommend UDP multicast diagnostic tool
 .. I have one if you don't
 . mention TCP and UDP ports that would need to be opened in a prod environment when firewalls are active
