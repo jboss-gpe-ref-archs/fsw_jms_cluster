@@ -53,6 +53,7 @@ In this reference architecture we'll build and run 6 containers in total:
 * 2 containers for the HornetQ broker cluster
 * 2 containers for the FSW cluster
 
+image::images/fsw-jms-cluster-docker-containers.png[]
 
 === HornetQ Cluster
 
@@ -68,13 +69,15 @@ Individual brokers form a cluster by defining cluster connections between them. 
 
 In HornetQ, fail-over is implemented using live-backup groups, where a live broker has one (or more) backup brokers. Backup brokers are not operational until fail-over occurs. Before fail-over, only the the live server is serving HornetQ clients while the backup broker remains passive. When the live broker crashes, the backup server becomes live. If the live server is configured for automatic fail-back, when it is restarted after a fail-over it become the live server again while the backup node will stop and become passive again.
 
-HornetQ fail-over relies on the fact that the live and backup nodes in the same live-backup group share the same persistence journal. HornetQ supports two strategies for sharing the journal: _shared store_ and _journal replication_. This reference architecture uses the shared journal strategy. In this strategy, both live and backup brokers share the same data directory using a shared file system. HornetQ supports GFS2 on a Storage Area Network and NFSv4. In the reference architecture, we use a {docker-volume-container} to provide a file system shared by the HornetQ live-backup groups.
+HornetQ fail-over relies on the fact that the live and backup nodes in the same live-backup group share the same persistence journal. HornetQ supports two strategies for sharing the journal: _shared store_ and _journal replication_. This reference architecture uses the shared journal strategy. In this strategy, both live and backup brokers share the same data directory using a shared file system. HornetQ supports GFS2 on a Storage Area Network and NFSv4. In the reference architecture, we use a {docker-volume-container} to provide a file system shared by the HornetQ live-backup groups. 
+
+For a production environment with a shared journal between the HornetQ live and backup nodes, Red Hat recommends to host the journals on a SAN with GFS2.
 
 === Fuse Service Works
 
 Fuse Service Works (FSW) is configured to use the HornetQ cluster for JMS messaging. FSW relies on the JMS subsystem configuration of the underlying EAP server. In our configuration, the JMS connection factory and the resource adapter managed connection pool use dynamic discovery using UDP to discover the HornetQ brokers. In situations where UDP cannot be used, the JMS connection factory and connection pool can be configured with a static list of remote HornetQ brokers.
 
-Fuse Service Works offers two gateways to leverage JMS: _JCA gateway_ and _JMS gateway_. The JMS gateway is built upon the camel-jms component, while the JCA gateway uses a JCA resource adapter to send or receive messages from a EIS. In this reference architecture we chose JCA, as it provides a better intergration with the underlying application server and its transaction manager.
+Fuse Service Works offers two gateways to leverage JMS: _JCA gateway_ and _JMS gateway_. The JMS gateway is built upon the camel-jms component, while the JCA gateway uses a JCA resource adapter to send or receive messages from a EIS. In this reference architecture we chose JCA, as it provides a better integration with the underlying application server and its transaction manager.
 
 === Fuse Service Works Test Application
 
@@ -146,7 +149,7 @@ Docker requires root access, so all docker operations need to be executed as roo
 
 ==== HornetQ Data Volume container
  
-This container will hold the shared file system for the HornetQ journals of the HornetQ brokers. The shared file system will e mounted on each of the HornetQ containers.
+This container will hold the shared file system for the HornetQ journals of the HornetQ brokers. The shared file system will be mounted on each of the HornetQ containers.
 
 To build the image:
 
@@ -206,6 +209,8 @@ The following scripts are used:
 * $REF_ARCH_HOME/docker/fsw/start-fsw.sh and $REF_ARCH_HOME/docker/fsw/stop-fsw.sh : scripts to start and stop FSW. Please note that the FSW instance will be started automatically when the Docker container is started.
 
 Although FSW is configured to use the remote HornetQ broker cluster, we still need to define a local queue for the AuditLogService of the test application. The outgoing JCA binding uses JNDI to look up the queue definition and does so in the local JNDI tree. But as the JMS connection factory points to the remote brokers, the local queue won't be used and instead messages are sent to the remote queue defined on the broker nodes.
+
+The Fuse Service Works Test Application consumes messages from a queue and persists the content in the MySQL database. This should all happen in one transaction, so both the JCA resources as the MySQL data source need to be enlisted in the transaction. For this we need to configure the MySQL datasource as an XA data source. The HornetQ JCA connection factory is XA aware by default.
 
 An administration user (username admin, password admin123!) is created as part of the provisioning.
 
@@ -418,7 +423,7 @@ MariaDB [(none)]>
 
 Now we can start experimenting with this setup, and see what happens if we shut down or kill a HornetQ node or a FSW node. To observe the behavior, you probably want to use the client application with a higher numer of messages than the default of 100 (by setting the `--count` parameter) so it runs long enough to allow manipulations on the servers. 
 
-To simulate a crash of a server, you can kill the JVM process in the _refarch-hq1_ docker container. Enter the _refarch-hq1_ container with `nsenter` as explained above. Then, on the command prompt, find the PID of the java process, and send it a kill signal:
+To simulate a crash of a server, you can kill the JVM process in the _refarch-hq2_ docker container - assuming that the client application is sending messages to the _refarch-hq1_ container. Enter the _refarch-hq2_ container with `nsenter` as explained above. Then, on the command prompt, find the PID of the java process, and send it a kill signal:
 
 ----
 [root@0887cb24ede1 /]# ps aux | grep java
@@ -444,24 +449,53 @@ To do a controlled shut down, from the container prompt:
 [root@0887cb24ede1 /]# ./stop-eap.sh
 ---- 
 
-In case of a crash of a HornetQ node, the backup broker for the failed live broker takes over. Messages keep being delivered to the queues.The FSW client connections to the failed broker are tranparently redirected to the backup broker. No messages are lost. 
+In case of a crash of a HornetQ node, the backup broker for the failed live broker takes over. Messages keep being delivered to the queues. The FSW client connections to the failed broker are tranparently redirected to the backup broker. No messages are lost. 
 
-In case of normal shutdown of one of the brokers, fail-over does not happen. Messages that were still undelivered by the shut down broker are persisted in the journal. This HornetQ broker that previously underwent a normal shutdown will have to be restarted to trigger delivery of those messages. This behaviour is set in the configuration of brokers, by setting the `failover-on-shutdown` parameter to `false` (see lines 15 and 47 in $REF_ARCH_HOME/docker/hq-cluster/configure-hornetq.cli). If this parameter is set to `true`, fail-over will also kick in when the broker is shut down normally.
+In case of normal shutdown of one of the brokers, fail-over does not happen. Messages that were still undelivered by the shut down broker are persisted in the journal. This HornetQ broker that previously underwent a normal shutdown will have to be restarted to trigger delivery of those messages. This behaviour is set in the configuration of brokers, by setting the `failover-on-shutdown` parameter to `false` (see lines 15 and 47 in `$REF_ARCH_HOME/docker/hq-cluster/configure-hornetq.cli`). If this parameter is set to `true`, fail-over will also kick in when the broker is shut down normally.
 
-When a failed broker is started up again, the live broker will take over from its backup. This behaviour is configured by setting the `allow-failback` parameter to `true`. If this parameter is set to false, the live broker will not take over again from its backup, but will act as the backup for the new live broker.  
+When a failed broker is started up again, the live broker will take over from its backup. This behaviour is configured by setting the `allow-failback` parameter to `true`. If this parameter is set to false, the live broker will not take over again from its backup, but will act as the backup for the new live broker. 
+
+=== Interaction with the containers
+
+While experimenting with this reference architecture, you might need to interact with the Docker containers to e.g. inspect server logs, change configuration settings, etc... 
+
+The HornetQ, FSW and MySQL containers can be entered with `nsenter`. Use the `docker inspect` command to get the PID (Process ID) of the container, which is then used as argument by `nsenter`. The `nsenter` command gives you a root prompt into the container.
+
+----
+# docker inspect --format '{{ .State.Pid }}' refarch-mysql
+8908
+# nsenter -m -u -n -i -p -t 8908 /bin/bash 
+----
+
+The installation directory for the HornetQ brokers and FSW is respectively:
+
+* HornetQ broker containers: `opt/jboss/hornetq/`
+* FSW containers : `opt/jboss/fsw`
+
+The server logs can be found at
+
+* HornetQ broker containers : `opt/jboss/hornetq/standalone/log/server.log`
+* FSW containers: `opt/jboss/fsw/standalone/log/server.log`
+
+Scripts are provided to start and stop the HornetQ broker (`start-eap.sh` and `stop-eap.sh`) and FSW (`start-fsw.sh` and `stop-eap.sh`) instances. These scripts are located in the root directory of the container. They should be executed as root (within the script the user is switched to the system user `jboss` used to run the HornetQ and FSW instances).
+
+The JBoss CLI (Command Line Interface) can be used to verify or modify configuration settings. The CLI can be launched from within the container by issuing a command like:
+
+----
+# /opt/jboss/hornetq/bin/jboss-cli.sh --connect --controller=172.17.0.2
+---- 
+
+Where `172.17.0.2` should be replaced by the IP address of the container. The IP address of the container can be found with the `docker inspect` command on the Docker host:
+
+----
+# docker inspect refarch-hq1 | grep IPAddress | cut -d '"' -f 4
+172.17.0.2
+---- 
 
 == To-Do
 
-. section 2.2 deployment diagram
-. shared file system
-.. what's the shared file system technology used in this ref arch ?
-.. what's our recommended clustered filesystem technology for a production environment ?  (GFS2 + SAN)
 . MySQL XA data source
-+
-Mention that a MySQL XA data source is needed for _RefArchDS_ datasource pool due to the multiple JCA resources involved in the trnx.
 Could also mention that mysql jdbc driver for this ref arch has issues during some circumstances of an XA transaction:  http://bugs.mysql.com/bug.php?id=72890
-. mention what the equivalent of $JBOSS_HOME is for FSW images .... i found it, but others may not.
-Or just suggest to:  su - jboss once logged in via nsenter
 . recommend UDP multicast diagnostic tool
 .. I have one if you don't
 . mention TCP and UDP ports that would need to be opened in a prod environment when firewalls are active
